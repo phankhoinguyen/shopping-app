@@ -1,19 +1,18 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shopping_app/data/categories.dart';
 import 'package:shopping_app/models/category.dart';
-import 'package:http/http.dart' as http;
 import 'package:shopping_app/models/grocery_item.dart';
+import 'package:shopping_app/providers/itemProvider.dart';
 
-class AddNewItem extends StatefulWidget {
+class AddNewItem extends ConsumerStatefulWidget {
   const AddNewItem({super.key});
 
   @override
-  State<AddNewItem> createState() => _AddNewItemState();
+  ConsumerState<AddNewItem> createState() => _AddNewItemState();
 }
 
-class _AddNewItemState extends State<AddNewItem> {
+class _AddNewItemState extends ConsumerState<AddNewItem> {
   bool _isSending = false;
   final _formKey = GlobalKey<FormState>();
   var enterName = '';
@@ -22,34 +21,33 @@ class _AddNewItemState extends State<AddNewItem> {
   void addItem() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      final url = Uri.https(
-        'shopping-app-ce98a-default-rtdb.firebaseio.com',
-        'shopping-list.json',
+
+      final newItem = GroceryItem(
+        id: '',
+        name: enterName,
+        quantity: int.tryParse(enterQuantity)!,
+        category: choosenCategory,
       );
       setState(() {
         _isSending = true;
       });
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'name': enterName,
-          'quantity': int.tryParse(enterQuantity)!,
-          'category': choosenCategory.title,
-        }),
-      );
-      final responseData = json.decode(response.body);
-      if (!mounted) {
-        return;
+      try {
+        await ref.read(groceryNotifierProvider.notifier).addItem(newItem);
+        if (!mounted) {
+          return;
+        }
+        Navigator.of(context).pop();
+      } catch (e) {
+        setState(() {
+          _isSending = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to add item'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
-      Navigator.of(context).pop(
-        GroceryItem(
-          id: responseData['name'],
-          name: enterName,
-          quantity: int.tryParse(enterQuantity)!,
-          category: choosenCategory,
-        ),
-      );
     }
   }
 
@@ -70,6 +68,7 @@ class _AddNewItemState extends State<AddNewItem> {
                   if (value!.isEmpty || value.trim().length <= 2) {
                     return 'Enter at least 3 characters';
                   }
+                  return null;
                 },
                 onSaved: (newValue) {
                   enterName = newValue!;
@@ -91,6 +90,7 @@ class _AddNewItemState extends State<AddNewItem> {
                             int.tryParse(value)! <= 0) {
                           return 'Enter valid numbers';
                         }
+                        return null;
                       },
                       onSaved: (newValue) {
                         enterQuantity = newValue!;
