@@ -12,7 +12,7 @@ class CategoriesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final itemGrocery = ref.watch(groceryNotifierProvider);
-    void goToAddNewItemScreen() async {
+    void goToAddNewItemScreen() {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (ctx) => const AddNewItem()),
